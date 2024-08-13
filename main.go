@@ -38,8 +38,8 @@ func main(){
 	      			fmt.Println(err)
 	   			}
 	   			sb := string(body)
-	   			check_result := strings.Contains(sb , "alert(1)","prompt(1)","confirm(1)")
-	   			// fmt.Println(check_result)
+	   			check_result := strings.Contains(sb , "alert(1)")	   			
+				// fmt.Println(check_result)
 	   			if check_result != false {
 	   				fmt.Println(string(colorGreen),"XSS FOUND:", domain,string(colorReset))
 	   			}else{
