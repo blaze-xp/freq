@@ -30,21 +30,21 @@
     window.alert = function(message) {
         logXSSDetection('Alert', message);
         // Call the original function to retain default behavior
-        originalAlert(message);
+        originalAlert.call(window, message);
     };
 
     // Override confirm
     window.confirm = function(message) {
         logXSSDetection('Confirm', message);
         // Call the original function to retain default behavior
-        return originalConfirm(message);
+        return originalConfirm.call(window, message);
     };
 
     // Override prompt
     window.prompt = function(message, defaultInput) {
         logXSSDetection('Prompt', message, defaultInput);
         // Call the original function to retain default behavior
-        return originalPrompt(message, defaultInput);
+        return originalPrompt.call(window, message, defaultInput);
     };
 
     // Set up a timeout to check for popup detection
