@@ -7,4 +7,4 @@ cd go/bin
 
 sudo mv freq /usr/local/bin
 
-echo testphp.vulnweb.com | waybackurls | gf xss | urldedupe | qsreplace 'yourxsspayloadhere' | freq
+echo testphp.vulnweb.com | waybackurls | gf xss | urldedupe | qsreplace 'alert1payloadhere' | freq
