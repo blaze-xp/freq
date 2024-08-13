@@ -1,56 +1,65 @@
-(function() {
-    // Store original functions
-    const originalAlert = window.alert;
-    const originalConfirm = window.confirm;
-    const originalPrompt = window.prompt;
+package main
 
-    // Variables to track popup activity
-    let popupDetected = false;
-    const detectionTimeout = 5000; // 5 seconds timeout for detection
+import (
+	"sync"
+	"bufio"
+	"net/http"
+	"fmt"
+	"os"
+	"strings"
+	"io/ioutil"
+)
 
-    // Utility function to show a custom message in the console
-    function logXSSDetection(messageType, message, defaultInput) {
-        console.log(
-            `%cXSS Detected! Type: ${messageType} - Message: ${message} ${defaultInput ? 'Default Input: ' + defaultInput : ''}`,
-            'color: green; font-weight: bold;'
-        );
-        popupDetected = true; // Mark that a popup was detected
-    }
+func main(){
 
-    function logNoXSSDetection() {
-        if (!popupDetected) {
-            console.log(
-                `%cNo XSS Detected.`,
-                'color: red; font-weight: bold;'
-            );
-        }
-    }
+	colorReset := "\033[0m"
+	colorRed := "\033[31m"
+    colorGreen := "\033[32m"
 
-    // Override alert
-    window.alert = function(message) {
-        logXSSDetection('Alert', message);
-        // Call the original function to retain default behavior
-        originalAlert.call(window, message);
-    };
 
-    // Override confirm
-    window.confirm = function(message) {
-        logXSSDetection('Confirm', message);
-        // Call the original function to retain default behavior
-        return originalConfirm.call(window, message);
-    };
+	sc := bufio.NewScanner(os.Stdin)
 
-    // Override prompt
-    window.prompt = function(message, defaultInput) {
-        logXSSDetection('Prompt', message, defaultInput);
-        // Call the original function to retain default behavior
-        return originalPrompt.call(window, message, defaultInput);
-    };
+	jobs := make(chan string)
+	var wg sync.WaitGroup
 
-    // Set up a timeout to check for popup detection
-    setTimeout(() => {
-        logNoXSSDetection();
-    }, detectionTimeout);
+	for i:= 0; i < 20; i++{
 
-    // Optionally, you could use additional logic to continuously check or reset the popupDetected flag if needed.
-})();
+		wg.Add(1)
+		go func(){
+			defer wg.Done()
+			for domain := range jobs {
+
+				resp, err := http.Get(domain)
+				if err != nil{
+					continue
+				}
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+	      			fmt.Println(err)
+	   			}
+	   			sb := string(body)
+	   			check_result := strings.Contains(sb , "alert(1)","prompt(1)","confirm(1)")
+	   			// fmt.Println(check_result)
+	   			if check_result != false {
+	   				fmt.Println(string(colorGreen),"XSS FOUND:", domain,string(colorReset))
+	   			}else{
+	   				fmt.Println(string(colorRed),"Not Vulnerable:", domain, string(colorReset))
+	   			}
+
+			}
+			
+   		}()
+
+	}
+
+
+
+	for sc.Scan(){
+		domain := sc.Text()
+		jobs <- domain		
+		
+
+	}
+	close(jobs)
+	wg.Wait()
+}
