@@ -1,65 +1,61 @@
 package main
 
 import (
-	"sync"
-	"bufio"
-	"net/http"
-	"fmt"
-	"os"
-	"strings"
-	"io/ioutil"
+    "log"
+    "net/http"
+    "time"
 )
 
-func main(){
+// Variables to track popup activity
+var popupDetected bool
+const detectionTimeout = 5 * time.Second
 
-	colorReset := "\033[0m"
-	colorRed := "\033[31m"
-    colorGreen := "\033[32m"
+// Utility function to log XSS detection
+func logXSSDetection(messageType, message, defaultInput string) {
+    log.Printf("\x1b[32mXSS Detected! Type: %s - Message: %s %s\x1b[0m", messageType, message, defaultInput)
+    popupDetected = true // Mark that a popup was detected
+}
 
+// Utility function to log no XSS detection
+func logNoXSSDetection() {
+    if !popupDetected {
+        log.Printf("\x1b[31mNo XSS Detected.\x1b[0m")
+    }
+}
 
-	sc := bufio.NewScanner(os.Stdin)
+// Handler for HTTP requests
+func handler(w http.ResponseWriter, r *http.Request) {
+    // Simulating detection of popups based on URL or request parameters
+    // This is a placeholder; you should replace it with actual detection logic
+    if r.URL.Path == "/alert" {
+        logXSSDetection("Alert", "Alert triggered", "")
+    } else if r.URL.Path == "/confirm" {
+        logXSSDetection("Confirm", "Confirm triggered", "")
+    } else if r.URL.Path == "/prompt" {
+        logXSSDetection("Prompt", "Prompt triggered", "Default input")
+    }
 
-	jobs := make(chan string)
-	var wg sync.WaitGroup
+    // Respond to the request
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte("Request processed"))
+}
 
-	for i:= 0; i < 20; i++{
+func main() {
+    // Set up the HTTP server
+    http.HandleFunc("/", handler)
+    go func() {
+        if err := http.ListenAndServe(":8080", nil); err != nil {
+            log.Fatalf("Server failed: %v", err)
+        }
+    }()
 
-		wg.Add(1)
-		go func(){
-			defer wg.Done()
-			for domain := range jobs {
+    // Set up a timeout to check for popup detection
+    time.AfterFunc(detectionTimeout, func() {
+        logNoXSSDetection()
+        // Optionally, you could use additional logic to reset the popupDetected flag
+        // or continuously check based on more sophisticated conditions.
+    })
 
-				resp, err := http.Get(domain)
-				if err != nil{
-					continue
-				}
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-	      			fmt.Println(err)
-	   			}
-	   			sb := string(body)
-	   			check_result := strings.Contains(sb , "alert(1)")
-	   			// fmt.Println(check_result)
-	   			if check_result != false {
-	   				fmt.Println(string(colorGreen),"XSS FOUND:", domain,string(colorReset))
-	   			}else{
-	   				fmt.Println(string(colorRed),"Not Vulnerable:", domain, string(colorReset))
-	   			}
-
-			}
-			
-   		}()
-
-	}
-
-
-
-	for sc.Scan(){
-		domain := sc.Text()
-		jobs <- domain		
-		
-
-	}
-	close(jobs)
-	wg.Wait()
+    // Keep the server running
+    select {}
 }
